@@ -59,57 +59,7 @@ export default function DashboardPage({ userId }) {
 
   return (
     <div className="page-container animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* 1. Profile Game Header */}
-      <div className="eco-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: 'linear-gradient(135deg, #ffffff, #f8faf8)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-          <div style={{ position: 'relative', width: '68px', height: '68px' }}>
-            <img
-              src={avatarPath}
-              alt={user.name}
-              style={{ width: '100%', height: '100%', borderRadius: '50%', border: '3px solid var(--emerald-500)', objectFit: 'cover' }}
-              onError={(e) => { e.target.src = '/src/assets/avatars/eco.png'; }}
-            />
-            <span className="online-indicator" style={{ width: '14px', height: '14px' }} />
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h1 style={{ fontSize: '1.6rem', color: '#0f172a' }}>{user.name}</h1>
-              <span className="pill-badge pill-emerald">
-                Level {progression?.level?.level_number || 1}
-              </span>
-            </div>
-            <p style={{ fontSize: '0.9rem', color: 'var(--emerald-700)', fontWeight: 700 }}>
-              {progression?.level?.title || 'Eco Starter'} • {user.city}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Streak & Total XP Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <div className="eco-card-mint" style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Flame size={20} style={{ color: '#ef4444' }} />
-            <div>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 600 }}>Active Streak</span>
-              <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>
-                {progression?.streak?.current_streak || 0} Days
-              </span>
-            </div>
-          </div>
-
-          <div className="eco-card-mint" style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Award size={20} style={{ color: 'var(--emerald-600)' }} />
-            <div>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 600 }}>Total EcoXP</span>
-              <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>
-                {progression?.totalXP || 0} XP
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. XP & Level Progress Card */}
+      {/* 1. XP & Level Progress Card */}
       <XPProgress progression={progression} />
 
       {/* 3. Main Split Grid: Suggested Quest + Carbon Footprint */}

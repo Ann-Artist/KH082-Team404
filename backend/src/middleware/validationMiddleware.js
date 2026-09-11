@@ -1,11 +1,11 @@
 function validateProfileSetup(req, res, next) {
   const { user, lifestyle } = req.body;
-  if (!user || !user.name || !user.email || !user.age_group || !user.city) {
+  if (!user || !user.name || !user.email || !user.password || !user.age_group || !user.city) {
     return res.status(400).json({
       success: false,
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Please complete all required profile fields (Name, Email, Age Group, City).'
+        message: 'Please complete all required profile fields (Name, Email, Password, Age Group, City).'
       }
     });
   }

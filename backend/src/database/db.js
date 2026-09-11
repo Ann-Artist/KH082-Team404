@@ -21,6 +21,8 @@ function initDatabase() {
     if (err) {
       console.error('Error executing schema.sql:', err);
     } else {
+      // Ensure password column exists for existing sqlite databases
+      db.run("ALTER TABLE users ADD COLUMN password TEXT NOT NULL DEFAULT 'password123'", () => {});
       console.log('Database tables created/verified successfully.');
       seedDatabase(db);
     }
@@ -36,6 +38,8 @@ db.query = (sql, params = []) => {
     });
   });
 };
+
+db.getAll = db.query;
 
 db.getOne = (sql, params = []) => {
   return new Promise((resolve, reject) => {

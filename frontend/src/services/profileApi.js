@@ -2,6 +2,17 @@ import { request } from './api';
 
 export const profileApi = {
   getDemoUser: () => request('/profile/demo-user'),
+  getAllProfiles: () => request('/profile/all'),
+  loginUser: (email, password) =>
+    request('/profile/login', {
+      method: 'POST',
+      body: { email, password }
+    }),
+  loginByEmail: (email, password) =>
+    request('/profile/login', {
+      method: 'POST',
+      body: { email, password }
+    }),
   setupProfile: (userData, lifestyleData) =>
     request('/profile/setup', {
       method: 'POST',

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { impactApi } from '../services/impactApi';
-import { TrendingUp, Bike, Bus, Sprout, Zap, ShieldCheck, Leaf } from 'lucide-react';
+import { TrendingUp, Bike, Bus, Sprout, Zap, ShieldCheck, Leaf, Scale } from 'lucide-react';
 import '../styles/index.css';
 
 export default function ImpactPage({ userId }) {
@@ -29,7 +29,7 @@ export default function ImpactPage({ userId }) {
     return (
       <div className="page-container" style={{ textAlign: 'center', paddingTop: '4rem' }}>
         <span className="pill-badge pill-blue animate-spin" style={{ padding: '0.75rem 1.5rem' }}>
-          Calculating Verified Impact Metrics...
+          Calculating Verified Real-Time Impact Metrics...
         </span>
       </div>
     );
@@ -51,23 +51,25 @@ export default function ImpactPage({ userId }) {
     plantCareCount = 0,
     electricitySubmissions = 0,
     totalKwhSaved = 0,
-    avoidedCO2eKg = 0
+    avoidedCO2eKg = 0,
+    monthlyBaselineKg = 180,
+    offsetPercentage = 0
   } = impact;
 
   return (
-    <div className="page-container animate-fade-in">
-      <div style={{ marginBottom: '2rem' }}>
+    <div className="page-container animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--emerald-600)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          <TrendingUp size={18} /> Sustainability Metrics
+          <TrendingUp size={18} /> Real-Time Sustainability Metrics
         </div>
-        <h1 style={{ fontSize: '1.8rem', color: '#0f172a' }}>Verified EcoQuest Impact</h1>
+        <h1 style={{ fontSize: '1.8rem', color: '#0f172a' }}>Verified EcoQuest Impact Tracker</h1>
         <p style={{ fontSize: '0.92rem', color: '#64748b', marginTop: '0.25rem' }}>
-          Quantified environmental contribution generated from your verified real-world sustainable quest completions.
+          Quantified environmental contributions calculated live from your verified real-world quest completions.
         </p>
       </div>
 
       {/* Hero Avoided CO2e Banner */}
-      <div className="eco-card-dark animate-fade-in" style={{ padding: '2rem', marginBottom: '1.75rem', position: 'relative', overflow: 'hidden' }}>
+      <div className="eco-card-dark animate-fade-in" style={{ padding: '2rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div>
             <span className="pill-badge pill-emerald" style={{ marginBottom: '0.5rem' }}>
@@ -77,7 +79,7 @@ export default function ImpactPage({ userId }) {
               {avoidedCO2eKg} <span style={{ fontSize: '1.2rem', color: 'var(--emerald-neon)' }}>kg CO2e Avoided</span>
             </h2>
             <p style={{ color: '#94a3b8', fontSize: '0.88rem', marginTop: '0.4rem', maxWidth: '520px' }}>
-              Estimated greenhouse gas emissions prevented by replacing motorized trips with cycling & transit, saving electricity, and tending plants.
+              Real-time greenhouse gas emissions prevented by replacing motorized trips with cycling & transit, saving electricity, and tending plants.
             </p>
           </div>
 
@@ -86,14 +88,48 @@ export default function ImpactPage({ userId }) {
               {totalActivities}
             </span>
             <span style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600 }}>
-              Verified Sustainable Actions
+              Verified Quest Completions
             </span>
           </div>
         </div>
       </div>
 
-      {/* Impact Breakdown Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+      {/* Real-time Baseline Footprint Offset Widget */}
+      <div className="eco-card" style={{ background: 'linear-gradient(135deg, #ffffff, #f0fdf4)', border: '1px solid #bbf7d0', padding: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.15rem', color: '#0f172a', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Scale size={18} style={{ color: 'var(--emerald-600)' }} /> Monthly Baseline Offset Progress
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '0.2rem' }}>
+              Your baseline profile footprint is <strong>{monthlyBaselineKg} kg CO2e / month</strong>. Your completed missions have offset <strong>{offsetPercentage}%</strong> of your monthly baseline!
+            </p>
+          </div>
+
+          <div style={{ background: '#ffffff', border: '1px solid #86efac', padding: '0.75rem 1.25rem', borderRadius: 'var(--radius-md)', textAlign: 'center', boxShadow: '0 2px 6px rgba(34, 197, 94, 0.1)' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Offset Percentage</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--emerald-700)' }}>
+              {offsetPercentage}% Achieved
+            </span>
+          </div>
+        </div>
+
+        {/* Offset Progress Bar */}
+        <div style={{ width: '100%', height: '10px', background: '#e2e8f0', borderRadius: '5px', marginTop: '1rem', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${Math.min(100, offsetPercentage)}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, var(--emerald-500), var(--emerald-neon))',
+              borderRadius: '5px',
+              transition: 'width 0.5s ease'
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Real-time Impact Breakdown Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
         <div className="eco-card">
           <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#dcfce7', color: 'var(--emerald-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
             <Bike size={22} />

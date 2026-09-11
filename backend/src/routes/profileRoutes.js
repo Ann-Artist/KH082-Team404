@@ -4,6 +4,9 @@ const profileController = require('../controllers/profileController');
 const { validateProfileSetup } = require('../middleware/validationMiddleware');
 
 router.get('/demo-user', profileController.getDemoUser);
+router.get('/all', profileController.getAllProfiles);
+router.post('/login', profileController.loginByEmail);
+router.get('/by-email/:email', profileController.loginByEmail);
 router.post('/setup', validateProfileSetup, profileController.setupProfile);
 router.get('/:userId', profileController.getProfile);
 router.put('/:userId', profileController.updateProfile);

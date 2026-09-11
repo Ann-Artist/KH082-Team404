@@ -46,6 +46,15 @@ class ProgressionController {
       next(err);
     }
   }
+
+  async getLeaderboard(req, res, next) {
+    try {
+      const leaderboard = await progressionService.getLeaderboard();
+      return res.json({ success: true, data: leaderboard });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new ProgressionController();

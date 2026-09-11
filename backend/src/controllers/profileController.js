@@ -27,6 +27,61 @@ class ProfileController {
     }
   }
 
+  async getAllProfiles(req, res, next) {
+    try {
+      const profiles = await profileService.getAllProfiles();
+      return res.json({ success: true, data: profiles });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async loginByEmail(req, res, next) {
+    try {
+      const email = req.body?.email || req.query?.email || req.params?.email;
+      const password = req.body?.password || req.query?.password;
+
+      if (!email || typeof email !== 'string' || !email.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_INPUT', message: 'Valid email address is required to log in.' }
+        });
+      }
+
+      if (!password || typeof password !== 'string' || !password.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_INPUT', message: 'Password is required to log in.' }
+        });
+      }
+
+      const authResult = await profileService.authenticateUser(email.trim(), password.trim());
+      if (!authResult.success) {
+        const statusCode = authResult.code === 'NOT_FOUND' ? 404 : 401;
+        return res.status(statusCode).json({
+          success: false,
+          error: { code: authResult.code, message: authResult.message }
+        });
+      }
+
+      const profile = authResult.profile;
+      const footprint = await carbonService.getUserFootprint(profile.id);
+      const progression = await progressionService.getUserProgression(profile.id);
+
+      return res.json({
+        success: true,
+        data: {
+          user: profile,
+          footprint,
+          progression
+        },
+        message: 'Login successful'
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async setupProfile(req, res, next) {
     try {
       const { user, lifestyle } = req.body;

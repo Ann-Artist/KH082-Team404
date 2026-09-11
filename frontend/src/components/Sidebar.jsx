@@ -3,6 +3,8 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Swords,
+  Trophy,
+  ShieldCheck,
   History,
   TrendingUp,
   Award,
@@ -17,6 +19,8 @@ import '../styles/components.css';
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/quests', label: 'Quests', icon: Swords },
+  { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { path: '/levels', label: 'Levels', icon: ShieldCheck },
   { path: '/activity', label: 'Activity History', icon: History },
   { path: '/impact', label: 'Impact Tracker', icon: TrendingUp },
   { path: '/rewards', label: 'Rewards & Badges', icon: Award },

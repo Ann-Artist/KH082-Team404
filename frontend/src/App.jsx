@@ -5,6 +5,8 @@ import SetupPage from './pages/SetupPage';
 import DashboardPage from './pages/DashboardPage';
 import QuestsPage from './pages/QuestsPage';
 import QuestDetailPage from './pages/QuestDetailPage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import LevelsPage from './pages/LevelsPage';
 import ActivityPage from './pages/ActivityPage';
 import ActivityDetailPage from './pages/ActivityDetailPage';
 import ImpactPage from './pages/ImpactPage';
@@ -21,42 +23,21 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkDemoSession();
+    // Initial load: User is directed to login/setup page first
+    setLoading(false);
   }, []);
 
-  const checkDemoSession = async () => {
-    try {
-      const savedUserId = localStorage.getItem('ecoquest_user_id');
-      if (savedUserId) {
-        const userRes = await profileApi.getProfile(savedUserId);
-        if (userRes.data) {
-          setUser(userRes.data);
-          const progRes = await progressionApi.getProgression(savedUserId);
-          setProgression(progRes.data);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fallback to initial demo user
-      const res = await profileApi.getDemoUser();
-      if (res.data && res.data.user) {
-        setUser(res.data.user);
-        setProgression(res.data.progression);
-        localStorage.setItem('ecoquest_user_id', res.data.user.id);
-      }
-    } catch (err) {
-      console.warn('No active session found:', err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSetupComplete = (data) => {
+  const handleSetupComplete = async (data) => {
     if (data && data.user) {
       setUser(data.user);
       setProgression(data.progression);
       localStorage.setItem('ecoquest_user_id', data.user.id);
+
+      // Fetch fresh progression
+      try {
+        const progRes = await progressionApi.getProgression(data.user.id);
+        if (progRes.data) setProgression(progRes.data);
+      } catch (e) {}
     }
   };
 
@@ -84,7 +65,7 @@ export default function App() {
 
   return (
     <Routes>
-      {/* Demo Setup Route */}
+      {/* Account Login / Registration Setup Route (Default Entry) */}
       <Route path="/setup" element={<SetupPage onSetupComplete={handleSetupComplete} />} />
 
       {/* Main Application Layout Routes */}
@@ -100,6 +81,8 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage userId={user?.id} onRefresh={refreshUserData} />} />
         <Route path="/quests" element={<QuestsPage userId={user?.id} />} />
         <Route path="/quests/:questId" element={<QuestDetailPage userId={user?.id} onRefresh={refreshUserData} />} />
+        <Route path="/leaderboard" element={<LeaderboardPage currentUserId={user?.id} />} />
+        <Route path="/levels" element={<LevelsPage userId={user?.id} />} />
         <Route path="/activity" element={<ActivityPage userId={user?.id} />} />
         <Route path="/activity/:submissionId" element={<ActivityDetailPage />} />
         <Route path="/impact" element={<ImpactPage userId={user?.id} />} />

@@ -71,47 +71,6 @@ export default function RewardsPage({ userId }) {
         </div>
       </div>
 
-      {/* Level Progression Roadmap */}
-      <div className="eco-card">
-        <h3 style={{ fontSize: '1.25rem', color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ShieldCheck size={20} style={{ color: 'var(--emerald-600)' }} /> Level & Title Roadmap
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
-          {[
-            { lvl: 1, title: 'Eco Starter', xp: '0-99 XP' },
-            { lvl: 2, title: 'Green Explorer', xp: '100-249 XP' },
-            { lvl: 3, title: 'Eco Adventurer', xp: '250-499 XP' },
-            { lvl: 4, title: 'Planet Protector', xp: '500-999 XP' },
-            { lvl: 5, title: 'Earth Champion', xp: '1000-1999 XP' },
-            { lvl: 6, title: 'Eco Guardian', xp: '2000+ XP' }
-          ].map((item) => {
-            const isCurrent = level?.level_number === item.lvl;
-            const isUnlocked = (level?.level_number || 1) >= item.lvl;
-
-            return (
-              <div
-                key={item.lvl}
-                style={{
-                  background: isCurrent ? 'var(--emerald-50)' : '#f8faf8',
-                  border: isCurrent ? '2px solid var(--emerald-500)' : '1px solid #e2e8f0',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '1rem',
-                  textAlign: 'center',
-                  opacity: isUnlocked ? 1 : 0.6
-                }}
-              >
-                <span className={`pill-badge ${isCurrent ? 'pill-emerald' : 'pill-dark'}`} style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-                  Level {item.lvl}
-                </span>
-                <h4 style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>{item.title}</h4>
-                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginTop: '0.2rem' }}>{item.xp}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Future Reward Partner Placeholders */}
       <div className="eco-card" style={{ background: '#f8faf8' }}>
         <h3 style={{ fontSize: '1.2rem', color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -9,8 +9,37 @@ class ProfileService {
     return user;
   }
 
+  async getAllProfiles() {
+    return await db.query(
+      'SELECT id, name, email, age_group, city, avatar_id, created_at, updated_at FROM users ORDER BY updated_at DESC'
+    );
+  }
+
+  async getProfileByEmail(email) {
+    if (!email) return null;
+    const user = await db.getOne('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
+    if (!user) return null;
+    return this.getUserProfile(user.id);
+  }
+
+  async authenticateUser(email, password) {
+    if (!email || !password) {
+      return { success: false, code: 'INVALID_INPUT', message: 'Both email address and password are required to log in.' };
+    }
+    const user = await db.getOne('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
+    if (!user) {
+      return { success: false, code: 'NOT_FOUND', message: `No account found with email "${email.trim()}". Please register as a new user.` };
+    }
+    if (user.password && user.password !== password) {
+      return { success: false, code: 'INVALID_PASSWORD', message: 'Incorrect password. Please check your password and try again.' };
+    }
+    const profile = await this.getUserProfile(user.id);
+    return { success: true, profile };
+  }
+
   async setupProfile(userData, lifestyleData) {
-    const { name, email, age_group, city, avatar_id } = userData;
+    const { name, email, password, age_group, city, avatar_id } = userData;
+    const pwd = password || 'password123';
     const {
       transport_mode,
       daily_distance_km,
@@ -29,13 +58,13 @@ class ProfileService {
     if (existingUser) {
       userId = existingUser.id;
       await db.execute(
-        `UPDATE users SET name = ?, age_group = ?, city = ?, avatar_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [name, age_group, city, avatar_id || 'eco', userId]
+        `UPDATE users SET name = ?, password = ?, age_group = ?, city = ?, avatar_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [name, pwd, age_group, city, avatar_id || 'eco', userId]
       );
     } else {
       const result = await db.execute(
-        `INSERT INTO users (name, email, age_group, city, avatar_id) VALUES (?, ?, ?, ?, ?)`,
-        [name, email, age_group, city, avatar_id || 'eco']
+        `INSERT INTO users (name, email, password, age_group, city, avatar_id) VALUES (?, ?, ?, ?, ?, ?)`,
+        [name, email, pwd, age_group, city, avatar_id || 'eco']
       );
       userId = result.lastID;
     }
