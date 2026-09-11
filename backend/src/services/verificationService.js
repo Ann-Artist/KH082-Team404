@@ -1,6 +1,7 @@
 const db = require('../database/db');
 const questConfig = require('../config/questConfig');
 const submissionService = require('./submissionService');
+const aiVerificationService = require('./aiVerificationService');
 
 class VerificationService {
   async verifySubmission(submissionId, extraParams = {}) {
@@ -45,14 +46,14 @@ class VerificationService {
        WHERE id = ?`,
       [
         verificationResult.status,
-        verificationResult.status === 'VERIFIED' ? 'VERIFIED' : 'REJECTED',
+        verificationResult.status === 'VERIFIED' ? 'VERIFIED' : verificationResult.status === 'SUSPICIOUS' ? 'SUSPICIOUS' : 'REJECTED',
         submissionId
       ]
     );
 
     // Save calculation data to quest_results
     const existingResult = await db.getOne('SELECT * FROM quest_results WHERE submission_id = ?', [submissionId]);
-    const distanceVal = verificationResult.verifiedData.distanceKm || extraParams.distanceKm || 0;
+    const distanceVal = verificationResult.verifiedData?.distanceKm || extraParams.distanceKm || 0;
     
     if (existingResult) {
       await db.execute(
@@ -86,120 +87,209 @@ class VerificationService {
     };
   }
 
-  // 1. Public Transport Verification
+  // 1. Public Transport Verification (Geo + AI Vision signal)
   async verifyPublicTransport(submission, { source, destination, distanceKm }) {
     const proofs = submission.proofs || [];
     const reasons = [];
 
-    // Rule Check 1: Must have at least 1 or 2 proof images/records
     if (proofs.length === 0) {
       reasons.push('Missing required journey proof images.');
-    }
-
-    // Rule Check 2: Geo check
-    const startProof = proofs.find((p) => p.type === 'START_PROOF' || p.type === 'PROOF');
-    const endProof = proofs.find((p) => p.type === 'END_PROOF');
-
-    const hasStartGeo = startProof && startProof.latitude && startProof.longitude;
-    const hasEndGeo = endProof && endProof.latitude && endProof.longitude;
-
-    // Calculated route distance: estimate from locations or user/demo params
-    const calculatedDistance = distanceKm || Math.max(3.5, Math.round((Math.random() * 10 + 4) * 10) / 10);
-
-    // Mock AI check: verify public transport environment
-    const aiContextScore = 0.92;
-
-    if (reasons.length > 0) {
       return { status: 'REJECTED', confidence: 0, reasons, verifiedData: { distanceKm: 0 } };
     }
 
+    const startProof = proofs.find((p) => p.type === 'START_PROOF' || p.type === 'PROOF') || proofs[0];
+    const endProof = proofs.find((p) => p.type === 'END_PROOF');
+    const photoPath = startProof?.file_path;
+
+    const hasStartGeo = Boolean(startProof && startProof.latitude && startProof.longitude);
+    const hasEndGeo = Boolean(endProof && endProof.latitude && endProof.longitude);
+
+    const calculatedDistance = distanceKm || Math.max(3.5, Math.round((Math.random() * 10 + 4) * 10) / 10);
+
+    // Real AI Vision Check
+    let aiRes = null;
+    if (photoPath) {
+      aiRes = await aiVerificationService.verifyTransportContext(photoPath);
+    }
+
+    // SUSPICIOUS fallback if AI service fails or returns parse/API error
+    if (!aiRes || aiRes.error) {
+      const aiErrorReason = aiRes?.raw || aiRes?.error || 'Proof photo could not be parsed by AI';
+      return {
+        status: 'SUSPICIOUS',
+        confidence: 0.5,
+        reasons: [`AI verification fallback: ${aiErrorReason}. Marked for manual review.`],
+        verifiedData: {
+          source: source || 'Transit Station',
+          destination: destination || 'Destination',
+          distanceKm: calculatedDistance,
+          transportMode: 'Bus/Metro',
+          aiError: aiRes?.error || 'MISSING_PHOTO'
+        }
+      };
+    }
+
+    const threshold = questConfig.public_transport.ai_confidence_threshold || 0.70;
+    const aiConfidence = parseFloat(aiRes.confidence || 0);
+    let status = 'VERIFIED';
+
+    if (aiRes.publicTransportContext === false && aiConfidence > 0.8) {
+      status = 'SUSPICIOUS';
+      reasons.push(aiRes.notes || 'Photo does not appear to show a public transport environment.');
+    } else if (aiConfidence < threshold && !hasStartGeo) {
+      status = 'SUSPICIOUS';
+      reasons.push(aiRes.notes || 'Public transport environment confidence is below threshold.');
+    } else {
+      reasons.push(aiRes.notes || 'Valid journey route and public transport context verified.');
+    }
+
     return {
-      status: 'VERIFIED',
-      confidence: aiContextScore,
-      reasons: ['Valid journey route and geo-tagged proof verified.'],
+      status,
+      confidence: aiConfidence,
+      reasons,
       verifiedData: {
         source: source || 'Pune Station',
         destination: destination || 'Deccan Gymkhana',
         distanceKm: calculatedDistance,
-        transportMode: 'Bus/Metro'
+        transportMode: 'Bus/Metro',
+        aiNotes: aiRes.notes
       }
     };
   }
 
-  // 2. Cycling Verification
+  // 2. Cycling Verification (AI Bicycle Consistency Check across start/end photos)
   async verifyCycling(submission, { distanceKm }) {
     const proofs = submission.proofs || [];
     const reasons = [];
 
     if (proofs.length === 0) {
       reasons.push('No cycling proof photo submitted.');
+      return { status: 'REJECTED', confidence: 0, reasons, verifiedData: { distanceKm: 0 } };
     }
 
     const dist = parseFloat(distanceKm || 5.0);
     if (dist <= 0 || dist > 150) {
       reasons.push('Invalid cycling distance recorded.');
+      return { status: 'REJECTED', confidence: 0, reasons, verifiedData: { distanceKm: dist } };
     }
 
-    // AI Check: Bicycle presence and consistency score across start & finish photos
-    const sameBicycleLikelihood = proofs.length >= 2 ? 0.91 : 0.86;
+    const startProofPath = (proofs.find((p) => p.type === 'START_PROOF') || proofs[0])?.file_path;
+    const endProofPath = (proofs.find((p) => p.type === 'END_PROOF') || proofs[1] || proofs[0])?.file_path;
+
+    // Real AI Vision Check
+    const aiRes = await aiVerificationService.verifyBicycleConsistency(startProofPath, endProofPath);
+
+    // SUSPICIOUS fallback if AI call fails
+    if (!aiRes || aiRes.error) {
+      const errorMsg = aiRes?.raw || aiRes?.error || 'AI verification failed';
+      return {
+        status: 'SUSPICIOUS',
+        confidence: 0.5,
+        reasons: [`AI verification fallback: ${errorMsg}. Marked for manual review.`],
+        verifiedData: { distanceKm: dist, aiError: aiRes?.error }
+      };
+    }
+
+    const confidence = parseFloat(aiRes.confidence || 0);
     const threshold = questConfig.cycling.ai_similarity_threshold;
 
     let status = 'VERIFIED';
-    if (sameBicycleLikelihood < 0.5) {
+    if (aiRes.bicyclePresent === false || confidence < 0.5) {
       status = 'REJECTED';
-      reasons.push('Bicycle in proof photos could not be verified.');
-    } else if (sameBicycleLikelihood < threshold) {
+      reasons.push(aiRes.notes || 'Bicycle in proof photos could not be verified.');
+    } else if (confidence < threshold || aiRes.sameBicycle === false) {
       status = 'SUSPICIOUS';
-      reasons.push('Bicycle similarity score is inconclusive.');
-    }
-
-    if (reasons.length > 0 && status === 'REJECTED') {
-      return { status: 'REJECTED', confidence: sameBicycleLikelihood, reasons, verifiedData: { distanceKm: dist } };
+      reasons.push(aiRes.notes || 'Bicycle similarity score is below verification threshold.');
+    } else {
+      reasons.push(aiRes.notes || 'Bicycle identified in proof photos with valid distance.');
     }
 
     return {
       status,
-      confidence: sameBicycleLikelihood,
-      reasons: ['Bicycle identified in proof photos with valid distance.'],
+      confidence,
+      reasons,
       verifiedData: {
         distanceKm: dist,
-        sameBicycleLikelihood
+        sameBicycleLikelihood: confidence,
+        aiNotes: aiRes.notes
       }
     };
   }
 
-  // 3. Electricity Bill Verification (Duplicate check + OCR extraction)
+  // 3. Electricity Bill Verification (Real AI OCR + Duplicate check + Reduction percent)
   async verifyElectricity(submission, { billingMonth, kwhConsumed, billAmount }) {
     const userId = submission.user_id;
     const proofs = submission.proofs || [];
     const reasons = [];
 
-    const month = billingMonth || 'September 2026';
+    const proofFile = (proofs.find((p) => p.type === 'BILL_PROOF' || p.type === 'PROOF') || proofs[0])?.file_path;
+
+    if (!proofFile) {
+      reasons.push('No electricity bill document image uploaded.');
+      return {
+        status: 'REJECTED',
+        confidence: 0,
+        reasons,
+        verifiedData: { billingMonth: billingMonth || 'Unknown' }
+      };
+    }
+
+    // Real AI OCR Extraction
+    const aiRes = await aiVerificationService.extractElectricityBill(proofFile);
+
+    // SUSPICIOUS fallback if AI call fails
+    if (!aiRes || aiRes.error) {
+      const errorMsg = aiRes?.raw || aiRes?.error || 'AI OCR bill processing failed';
+      return {
+        status: 'SUSPICIOUS',
+        confidence: 0.5,
+        reasons: [`AI verification fallback: ${errorMsg}. Marked for manual review.`],
+        verifiedData: {
+          billingMonth: billingMonth || 'Unknown Period',
+          kwhConsumed: parseFloat(kwhConsumed || 140),
+          billAmount: parseFloat(billAmount || 1120),
+          aiError: aiRes?.error
+        }
+      };
+    }
+
+    // If AI explicitly determines image is not an electricity bill -> REJECT
+    if (aiRes.isElectricityBill === false) {
+      reasons.push('Submitted document is not a valid electricity bill.');
+      return {
+        status: 'REJECTED',
+        confidence: parseFloat(aiRes.confidence || 0),
+        reasons,
+        verifiedData: { isElectricityBill: false }
+      };
+    }
+
+    // Extract billing values from AI (fallback to user inputs if AI extracted null/undefined)
+    const extractedMonth = aiRes.billingMonth || billingMonth || 'September 2026';
+    const extractedKwh = parseFloat(aiRes.kwhConsumed || kwhConsumed || 140);
+    const extractedAmount = parseFloat(aiRes.billAmount || billAmount || 1120);
+    const confidence = parseFloat(aiRes.confidence || 0.9);
 
     // Duplicate Check Rule: Same user cannot submit electricity bill for same billing period twice
     const existingBill = await db.getOne(
       `SELECT qs.id FROM quest_submissions qs
        JOIN quest_results qr ON qs.id = qr.submission_id
-       WHERE qs.user_id = ? AND qs.quest_id = ? AND qs.verification_status = 'VERIFIED' AND qs.id != ?
+       WHERE qs.user_id = ? AND qs.quest_id = ? AND (qs.verification_status = 'VERIFIED' OR qs.verification_status = 'SUSPICIOUS') AND qs.id != ?
        AND qr.calculation_data LIKE ?`,
-      [userId, submission.quest_id, submission.id, `%${month}%`]
+      [userId, submission.quest_id, submission.id, `%${extractedMonth}%`]
     );
 
     if (existingBill) {
-      reasons.push(`Electricity bill for ${month} has already been submitted and verified.`);
+      reasons.push(`Electricity bill for ${extractedMonth} has already been submitted and verified.`);
       return {
         status: 'REJECTED',
         confidence: 0,
         reasons,
-        verifiedData: { billingMonth: month, duplicate: true }
+        verifiedData: { billingMonth: extractedMonth, duplicate: true }
       };
     }
 
-    // OCR / AI Bill Extraction Simulation
-    const extractedKwh = parseFloat(kwhConsumed || 140);
-    const extractedAmount = parseFloat(billAmount || 1120);
-
-    // Look up previous verified bill to evaluate reduction comparison (Option B logic!)
+    // Previous bill reduction calculation logic
     const previousBillResult = await db.getOne(
       `SELECT qr.calculation_data FROM quest_submissions qs
        JOIN quest_results qr ON qs.id = qr.submission_id
@@ -221,12 +311,22 @@ class VerificationService {
       }
     }
 
+    const threshold = questConfig.electricity.ai_confidence_threshold || 0.70;
+    let status = 'VERIFIED';
+
+    if (confidence < threshold) {
+      status = 'SUSPICIOUS';
+      reasons.push(`AI OCR confidence (${confidence}) is below threshold. Marked for manual review.`);
+    } else {
+      reasons.push(`Electricity bill for ${extractedMonth} verified successfully via AI OCR.`);
+    }
+
     return {
-      status: 'VERIFIED',
-      confidence: 0.95,
-      reasons: [`Electricity bill for ${month} verified successfully.`],
+      status,
+      confidence,
+      reasons,
       verifiedData: {
-        billingMonth: month,
+        billingMonth: extractedMonth,
         kwhConsumed: extractedKwh,
         billAmount: extractedAmount,
         reductionPercent
@@ -234,28 +334,54 @@ class VerificationService {
     };
   }
 
-  // 4. Plant Care Verification
+  // 4. Plant Care Verification (Real AI Plant & Care Action Detection)
   async verifyPlantCare(submission) {
     const proofs = submission.proofs || [];
     const reasons = [];
 
-    if (proofs.length === 0) {
+    const photoPath = (proofs.find((p) => p.type === 'PROOF' || p.file_path) || proofs[0])?.file_path;
+
+    if (!photoPath) {
       reasons.push('Missing photo proof for plant care action.');
-    }
-
-    // AI Check: Plant and watering action detection
-    const plantDetectionScore = 0.89;
-
-    if (reasons.length > 0) {
       return { status: 'REJECTED', confidence: 0, reasons, verifiedData: {} };
     }
 
+    // Real AI Vision Check
+    const aiRes = await aiVerificationService.verifyPlantCareAction(photoPath);
+
+    // SUSPICIOUS fallback if AI call fails
+    if (!aiRes || aiRes.error) {
+      const errorMsg = aiRes?.raw || aiRes?.error || 'AI vision check failed';
+      return {
+        status: 'SUSPICIOUS',
+        confidence: 0.5,
+        reasons: [`AI verification fallback: ${errorMsg}. Marked for manual review.`],
+        verifiedData: { activity: 'Plant Care', aiError: aiRes?.error }
+      };
+    }
+
+    const confidence = parseFloat(aiRes.confidence || 0);
+    const threshold = questConfig.plant_care.ai_confidence_threshold || 0.70;
+    let status = 'VERIFIED';
+
+    if (aiRes.plantDetected === false) {
+      status = 'REJECTED';
+      reasons.push('No plants or green vegetation detected in proof photo.');
+    } else if (confidence < threshold || aiRes.careActionVisible === false) {
+      status = 'SUSPICIOUS';
+      reasons.push('Plant detected but active care action confidence is below threshold.');
+    } else {
+      reasons.push('Plant maintenance activity verified by AI vision.');
+    }
+
     return {
-      status: 'VERIFIED',
-      confidence: plantDetectionScore,
-      reasons: ['Plant maintenance activity verified.'],
+      status,
+      confidence,
+      reasons,
       verifiedData: {
-        activity: 'Plant Care / Watering'
+        activity: aiRes.activity || 'Plant Care / Gardening',
+        plantDetected: aiRes.plantDetected,
+        careActionVisible: aiRes.careActionVisible
       }
     };
   }

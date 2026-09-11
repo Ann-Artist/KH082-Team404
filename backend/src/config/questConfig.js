@@ -11,6 +11,7 @@ module.exports = {
     xp_per_km: 4,             // EcoXP earned per verified kilometer traveled
     min_xp: 15,                // Minimum guaranteed reward for completed transit trip
     verification_threshold: 0.75, // Haversine / proof geo & timestamp validation threshold
+    ai_confidence_threshold: 0.70, // AI confidence score required for transport context
     cooldownHours: 1           // Cooldown before starting next transit quest
   },
 
@@ -35,6 +36,7 @@ module.exports = {
       high_usage: 15       // > 300 kWh
     },
     reduction_bonus_per_percent: 1.5, // Extra XP for percentage reduction vs previous month
+    ai_confidence_threshold: 0.70,   // AI confidence score required for electricity bill verification
     cooldownHours: 720     // Monthly billing period (~30 days)
   },
 
@@ -44,6 +46,7 @@ module.exports = {
     description: 'Water, plant, or maintain real-world trees, gardens, or houseplants.',
     category: 'nature',
     fixed_xp: 25,          // Fixed reward for plant care activity
+    ai_confidence_threshold: 0.70, // AI confidence score required for plant care action
     cooldownHours: 24      // Configurable cooldown window (24 hours default)
   }
 };

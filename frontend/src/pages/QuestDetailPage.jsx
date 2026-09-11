@@ -7,7 +7,7 @@ import QuestCompleteModal from '../components/QuestCompleteModal';
 import LevelUpModal from '../components/LevelUpModal';
 import { questApi } from '../services/questApi';
 import { submissionApi } from '../services/submissionApi';
-import { Bus, Bike, Zap, Sprout, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Bus, Bike, Zap, Sprout, ArrowRight, ArrowLeft, ShieldCheck, RefreshCw } from 'lucide-react';
 import '../styles/index.css';
 
 const questIcons = {
@@ -61,6 +61,15 @@ export default function QuestDetailPage({ userId, onRefresh }) {
       setError(err.message || 'Failed to load quest details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+      setError('');
+    } else {
+      navigate('/quests');
     }
   };
 
@@ -122,7 +131,7 @@ export default function QuestDetailPage({ userId, onRefresh }) {
       const res = await submissionApi.verifySubmission(submission.id, extraData);
 
       if (res.data.verificationStatus === 'REJECTED') {
-        setError(res.message || 'Verification rejected. Please try again with valid proof.');
+        setError(res.message || 'Verification rejected. Please check proof image and try again.');
         setVerifying(false);
         return;
       }
@@ -208,7 +217,33 @@ export default function QuestDetailPage({ userId, onRefresh }) {
         />
       )}
 
-      <div className="eco-card" style={{ maxWidth: '780px', margin: '0 auto', padding: '2.5rem' }}>
+      <div className="eco-card" style={{ maxWidth: '780px', margin: '0 auto', padding: '2.5rem', position: 'relative' }}>
+        {/* Navigation Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <button
+            onClick={handleGoBack}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              background: '#f1f5f9',
+              color: '#334155',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = '#e2e8f0')}
+            onMouseOut={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+          >
+            <ArrowLeft size={16} />
+            {currentStep > 0 ? 'Back to Previous Step' : 'Back to Quests'}
+          </button>
+        </div>
+
         {/* Mission Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
           <div className={`quest-icon-wrapper ${quest.category}`} style={{ width: '56px', height: '56px' }}>
@@ -224,8 +259,16 @@ export default function QuestDetailPage({ userId, onRefresh }) {
         <QuestStep steps={steps} currentStepIndex={currentStep} />
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', fontSize: '0.88rem' }}>
-            {error}
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '0.85rem 1.1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', fontSize: '0.88rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{error}</span>
+            {currentStep > 0 && (
+              <button
+                onClick={handleGoBack}
+                style={{ background: '#991b1b', color: '#ffffff', border: 'none', padding: '0.35rem 0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Go Back & Re-upload
+              </button>
+            )}
           </div>
         )}
 
@@ -257,7 +300,17 @@ export default function QuestDetailPage({ userId, onRefresh }) {
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Step 1: Board Transit & Take Start Photo</h3>
                 <ProofUploader label="Take photo at starting station/bus stop" onFileSelect={setStartFile} />
                 <GeoCapture onLocationCaptured={setGeoData} />
-                <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={() => handleAttachProofAndContinue('START_PROOF', startFile, 2)}>
+                <button
+                  className="btn-emerald"
+                  style={{ marginTop: '1.5rem', width: '100%' }}
+                  onClick={() => {
+                    if (!startFile) {
+                      setError('Please select a starting station proof photo before continuing.');
+                      return;
+                    }
+                    handleAttachProofAndContinue('START_PROOF', startFile, 2);
+                  }}
+                >
                   Confirm Boarding & Continue Journey <ArrowRight size={18} />
                 </button>
               </div>
@@ -268,7 +321,17 @@ export default function QuestDetailPage({ userId, onRefresh }) {
                 <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Step 2: Destination Arrival Photo</h3>
                 <ProofUploader label="Take photo upon reaching destination" onFileSelect={setEndFile} />
                 <GeoCapture onLocationCaptured={setGeoData} />
-                <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={() => handleAttachProofAndContinue('END_PROOF', endFile, 3)}>
+                <button
+                  className="btn-emerald"
+                  style={{ marginTop: '1.5rem', width: '100%' }}
+                  onClick={() => {
+                    if (!endFile) {
+                      setError('Please select a destination proof photo before continuing.');
+                      return;
+                    }
+                    handleAttachProofAndContinue('END_PROOF', endFile, 3);
+                  }}
+                >
                   Submit Final Proof & Verify <ArrowRight size={18} />
                 </button>
               </div>
@@ -299,6 +362,10 @@ export default function QuestDetailPage({ userId, onRefresh }) {
                 <ProofUploader label="Start Photo (Bicycle visible)" onFileSelect={setStartFile} />
                 <GeoCapture onLocationCaptured={setGeoData} />
                 <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={async () => {
+                  if (!startFile) {
+                    setError('Please select a start bicycle proof photo before continuing.');
+                    return;
+                  }
                   await handleStartMission();
                   await handleAttachProofAndContinue('START_PROOF', startFile, 1);
                 }}>
@@ -315,7 +382,13 @@ export default function QuestDetailPage({ userId, onRefresh }) {
                   <input type="number" step="0.1" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} style={{ width: '100%', padding: '0.7rem', borderRadius: 'var(--radius-sm)', border: '1px solid #cbd5e1' }} />
                 </div>
                 <ProofUploader label="Finish Photo (Same bicycle visible)" onFileSelect={setEndFile} />
-                <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={() => handleAttachProofAndContinue('END_PROOF', endFile, 2)}>
+                <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={() => {
+                  if (!endFile) {
+                    setError('Please select a finish bicycle proof photo before continuing.');
+                    return;
+                  }
+                  handleAttachProofAndContinue('END_PROOF', endFile, 2);
+                }}>
                   Submit Ride & Verify Consistency <ArrowRight size={18} />
                 </button>
               </div>
@@ -352,6 +425,10 @@ export default function QuestDetailPage({ userId, onRefresh }) {
                 </div>
                 <ProofUploader label="Upload Electricity Bill Document/Photo" onFileSelect={setBillFile} />
                 <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={async () => {
+                  if (!billFile) {
+                    setError('Please select an electricity bill image file before proceeding.');
+                    return;
+                  }
                   await handleStartMission();
                   await handleAttachProofAndContinue('BILL_PROOF', billFile, 1);
                 }}>
@@ -385,6 +462,10 @@ export default function QuestDetailPage({ userId, onRefresh }) {
                 <ProofUploader label="Photo Proof of Plant Care Action" onFileSelect={setPlantFile} />
                 <GeoCapture onLocationCaptured={setGeoData} />
                 <button className="btn-emerald" style={{ marginTop: '1.5rem', width: '100%' }} onClick={async () => {
+                  if (!plantFile) {
+                    setError('Please select a plant care proof photo before proceeding.');
+                    return;
+                  }
                   await handleStartMission();
                   await handleAttachProofAndContinue('PROOF', plantFile, 1);
                 }}>
@@ -410,3 +491,4 @@ export default function QuestDetailPage({ userId, onRefresh }) {
     </div>
   );
 }
+

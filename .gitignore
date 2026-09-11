@@ -3,7 +3,7 @@ node_modules/
 frontend/node_modules/
 backend/node_modules/
 
-# Environment Variables
+# Environment Variables & API Keys
 .env
 .env.local
 .env.*.local
@@ -11,6 +11,8 @@ backend/.env
 frontend/.env
 
 # Build outputs
+dist/
+dist-ssr/
 frontend/dist/
 frontend/dist-ssr/
 *.tsbuildinfo
@@ -23,6 +25,10 @@ backend/src/database/*.sqlite-journal
 # Uploaded Proof Images
 backend/src/uploads/*
 !backend/src/uploads/.gitkeep
+
+# Temporary and Scratch Files
+scratch/
+.tempmediaStorage/
 
 # Logs
 logs
