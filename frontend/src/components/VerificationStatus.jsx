@@ -1,11 +1,11 @@
 import React from 'react';
-import { CheckCircle2, AlertOctagon, XCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertOctagon, XCircle, RefreshCw, Clock } from 'lucide-react';
 import '../styles/components.css';
 
 export default function VerificationStatus({ status }) {
   let badgeClass = 'pill-blue';
-  let Icon = RefreshCw;
-  let label = status || 'PENDING';
+  let Icon = Clock;
+  let label = 'Incomplete Attempt';
 
   switch (status) {
     case 'VERIFIED':
@@ -16,7 +16,7 @@ export default function VerificationStatus({ status }) {
     case 'SUSPICIOUS':
       badgeClass = 'pill-orange';
       Icon = AlertOctagon;
-      label = 'Needs Review';
+      label = 'Needs Review (AI Flagged)';
       break;
     case 'REJECTED':
       badgeClass = 'pill-orange';
@@ -28,6 +28,13 @@ export default function VerificationStatus({ status }) {
       Icon = RefreshCw;
       label = 'Verifying...';
       break;
+    case 'PENDING':
+    case 'STARTED':
+    default:
+      badgeClass = 'pill-blue';
+      Icon = Clock;
+      label = 'Incomplete Attempt';
+      break;
   }
 
   return (
@@ -37,3 +44,4 @@ export default function VerificationStatus({ status }) {
     </span>
   );
 }
+

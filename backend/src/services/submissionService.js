@@ -14,6 +14,18 @@ class SubmissionService {
       throw new Error(`Quest is on cooldown. Please wait ${cooldown.remainingMinutes} minutes.`);
     }
 
+    // Check if there is an existing open uncompleted draft for this user and quest
+    const existingDraft = await db.getOne(
+      `SELECT id FROM quest_submissions 
+       WHERE user_id = ? AND quest_id = ? AND verification_status = 'PENDING' AND completed_at IS NULL
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId, quest.id]
+    );
+
+    if (existingDraft) {
+      return this.getSubmission(existingDraft.id);
+    }
+
     // Calculate count of previous submissions for attempt number
     const countRow = await db.getOne(
       'SELECT COUNT(*) as attemptCount FROM quest_submissions WHERE user_id = ? AND quest_id = ?',

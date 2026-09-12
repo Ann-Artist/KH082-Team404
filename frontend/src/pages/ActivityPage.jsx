@@ -29,6 +29,8 @@ export default function ActivityPage({ userId }) {
 
   const filteredSubmissions = submissions.filter((sub) => {
     if (filter === 'VERIFIED') return sub.verification_status === 'VERIFIED';
+    if (filter === 'SUSPICIOUS') return sub.verification_status === 'SUSPICIOUS';
+    if (filter === 'INCOMPLETE') return sub.verification_status === 'PENDING' || sub.status === 'STARTED';
     if (filter === 'REJECTED') return sub.verification_status === 'REJECTED';
     return true;
   });
@@ -47,23 +49,31 @@ export default function ActivityPage({ userId }) {
         </div>
 
         {/* Filter Pills */}
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#e2e8f0', padding: '0.25rem', borderRadius: 'var(--radius-pill)' }}>
-          {['ALL', 'VERIFIED', 'REJECTED'].map((f) => (
+        <div style={{ display: 'flex', gap: '0.35rem', background: '#e2e8f0', padding: '0.25rem', borderRadius: 'var(--radius-pill)', flexWrap: 'wrap' }}>
+          {[
+            { id: 'ALL', label: 'All Activities' },
+            { id: 'VERIFIED', label: 'Verified' },
+            { id: 'SUSPICIOUS', label: 'Needs Review' },
+            { id: 'INCOMPLETE', label: 'Incomplete' },
+            { id: 'REJECTED', label: 'Rejected' }
+          ].map((f) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
+              key={f.id}
+              onClick={() => setFilter(f.id)}
               style={{
-                padding: '0.4rem 0.85rem',
+                padding: '0.4rem 0.75rem',
                 borderRadius: 'var(--radius-pill)',
-                fontSize: '0.82rem',
+                fontSize: '0.8rem',
                 fontWeight: 600,
-                background: filter === f ? '#ffffff' : 'transparent',
-                color: filter === f ? '#0f172a' : '#64748b',
-                boxShadow: filter === f ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                transition: 'all 0.2s ease'
+                background: filter === f.id ? '#ffffff' : 'transparent',
+                color: filter === f.id ? '#0f172a' : '#64748b',
+                boxShadow: filter === f.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
+                border: 'none'
               }}
             >
-              {f === 'ALL' ? 'All Activities' : f}
+              {f.label}
             </button>
           ))}
         </div>
